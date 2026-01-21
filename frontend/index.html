@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Akamai Object Storage Demo</title>
+  <style>
+    /* Modern Dark Theme */
+    body { margin:0; font-family: system-ui, -apple-system, sans-serif;
+      background: linear-gradient(135deg,#111827,#1f2937); color:#f9fafb; padding: 20px; }
+    .container { max-width:1100px; margin:0 auto; }
+    
+    /* Tabs */
+    .tabs { display:flex; gap:16px; margin-bottom:16px; border-bottom:1px solid #374151; }
+    .tab { padding:10px 18px; cursor:pointer; background:transparent; border:none; color:#9ca3af; font-size:16px; }
+    .tab.active { color:#f9fafb; border-bottom: 2px solid #3b82f6; }
+    .panel { display:none; }
+    .panel.active { display:block; }
+
+    /* Forms */
+    .field { margin-bottom:12px; }
+    label { display:block; font-size:12px; color:#9ca3af; margin-bottom:4px; }
+    input, select { width:100%; padding:8px 10px; border-radius:6px; border:1px solid #4b5563;
+      background:#111827; color:#f9fafb; box-sizing: border-box; }
+    .grid-2 { display:grid; grid-template-columns: 1fr 1fr; gap:16px; }
+
+    /* Buttons */
+    .btn { padding:10px 20px; border-radius:6px; border:none;
+      background:linear-gradient(135deg,#2563eb,#1d4ed8); color:white; cursor:pointer; font-weight:600; }
+    .btn.secondary { background:#374151; }
+
+    /* Metric Cards */
+    .cards { display:grid; grid-template-columns:repeat(4, 1fr); gap:12px; margin-top:24px; }
+    .card { background:rgba(31, 41, 55, 0.8); border-radius:12px; padding:16px; border:1px solid #374151; }
+    .card-title { font-size:12px; color:#9ca3af; }
+    .card-value { font-size:24px; font-weight:700; margin-top: 4px; }
+    .card-sub { font-size: 11px; color: #34d399; margin-top: 4px; }
+
+    /* File Table */
+    .table-header { display: flex; justify-content: space-between; align-items: center; margin-top: 20px; padding-bottom: 10px; border-bottom: 1px solid #374151; }
+    table { width:100%; border-collapse:collapse; margin-top:10px; font-size:14px; }
+    th { text-align:left; color:#9ca3af; padding:8px; border-bottom:1px solid #374151; }
+    td { padding:8px; border-bottom:1px solid #374151; font-family: monospace; }
+    a { color: #60a5fa; text-decoration: none; }
+    a:hover { text-decoration: underline; }
+  </style>
+</head>
+<body>
+<div class="container">
+  <h1>Akamai Object Storage Performance Demo</h1>
+
+  <div class="tabs">
+    <button class="tab active" onclick="switchTab('upload')" id="tab-upload">Generate & Upload</button>
+    <button class="tab" onclick="switchTab('results')" id="tab-results">Run Results</button>
+    <button class="tab" onclick="switchTab('browser')" id="tab-browser">File Browser</button>
+  </div>
+
+  <div id="upload" class="panel active">
+    <div class="grid-2">
+      <div class="field"><label>Total Files</label><input id="fileCount" type="number" value="9168" /></div>
+      <div class="field"><label>File Size (MiB)</label><input id="fileSizeMB" type="number" value="75" /></div>
+      <div class="field"><label>File Prefix</label><input id="filePrefix" type="text" value="monitor3/20260115/12" /></div>
+      <div class="field"><label>Mode</label>
+        <select id="mode"><option value="adaptive">Adaptive (Recommended)</option></select>
+      </div>
+    </div>
+    
+    <button class="btn" onclick="runUpload()">Run Upload Job</button>
+    <div id="statusText" style="margin-top:12px; color:#34d399; font-weight:600;"></div>
+  </div>
+
+  <div id="results" class="panel">
+    <h2 style="margin-top:0;">Job Completion Statistics</h2>
+    <div class="cards" id="metricsCards">
+      <div class="card"><div class="card-title">Throughput</div><div class="card-value" id="throughput">-</div><div class="card-sub">Sustained Speed</div></div>
+      <div class="card"><div class="card-title">Network Saturation</div><div class="card-value" id="netSat">-</div><div class="card-sub">Of ~5Gbps Client Link</div></div>
+      <div class="card"><div class="card-title">Total Time</div><div class="card-value" id="totalTime">-</div></div>
+      <div class="card"><div class="card-title">Files Uploaded</div><div class="card-value" id="filesUploaded">-</div></div>
+      
+      <div class="card"><div class="card-title">Avg Latency</div><div class="card-value" id="avgTime">-</div></div>
+      <div class="card"><div class="card-title">P95 Latency</div><div class="card-value" id="p95Time">-</div><div class="card-sub">Consistent Performance</div></div>
+      <div class="card"><div class="card-title">Stability Score</div><div class="card-value" id="stability">-</div><div class="card-sub">Consistency Rating</div></div>
+    </div>
+    
+    <h3 style="margin-top:24px; color:#9ca3af;">Platform Scalability</h3>
+    <div class="cards">
+      <div class="card">
+        <div class="card-title">Average RPS</div>
+        <div class="card-value" id="rpsVal">-</div>
+        <div class="card-sub">Requests Per Second</div>
+      </div>
+      <div class="card">
+        <div class="card-title">E3 Scaling Capacity</div>
+        <div class="card-value" id="rpsCap">-</div>
+        <div class="card-sub" id="rpsSub">Unused Headroom (vs Limit)</div>
+      </div>
+    </div>
+  </div>
+
+  <div id="browser" class="panel">
+    <div class="grid-2" style="grid-template-columns: repeat(4, 1fr); align-items: end;">
+      <div class="field"><label>Monitor</label>
+        <select id="b_mon"><option>monitor1</option><option>monitor2</option><option selected>monitor3</option><option>monitor4</option></select>
+      </div>
+      <div class="field"><label>Date (YYYYMMDD)</label><input id="b_date" type="text" value="20260115" /></div>
+      <div class="field"><label>Hour (HH)</label><input id="b_hour" type="text" value="12" /></div>
+      <div class="field"><button class="btn" onclick="loadBase()">Go</button></div>
+    </div>
+
+    <div class="table-header">
+      <h2 id="indexTitle" style="margin:0;">Index of /</h2>
+      <div style="display:flex; gap:16px; align-items:center;">
+        <span id="fileCountDisplay" style="font-weight:700; color:#34d399; font-size:18px;">0 Files</span>
+        <button class="btn secondary" onclick="deletePrefix()" style="font-size:12px; padding:6px 12px;">Delete Folder</button>
+      </div>
+    </div>
+
+    <table id="indexTable">
+      <thead><tr><th>Name</th><th>Last Modified</th><th>Size</th></tr></thead>
+      <tbody></tbody>
+    </table>
+  </div>
+</div>
+
+<script>
+  const API_BASE = "http://" + window.location.hostname + ":3000";
+
+  function switchTab(id) {
+    document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    document.getElementById(id).classList.add('active');
+    document.getElementById('tab-'+id).classList.add('active');
+  }
+
+  // --- UPLOAD LOGIC ---
+  async function runUpload() {
+    const status = document.getElementById("statusText");
+    status.textContent = "Starting upload... please wait.";
+    status.style.color = "#fbbf24"; // Yellow
+    
+    const payload = {
+      fileCount: Number(document.getElementById("fileCount").value),
+      fileSizeMB: Number(document.getElementById("fileSizeMB").value),
+      filePrefix: document.getElementById("filePrefix").value
+    };
+
+    try {
+      const res = await fetch(`${API_BASE}/upload-adaptive`, {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      });
+      const data = await res.json();
+
+      status.textContent = "Upload Complete!";
+      status.style.color = "#34d399"; // Green
+
+      // Switch to Results Tab
+      switchTab('results');
+
+      // 1. Basic Stats
+      document.getElementById("throughput").textContent = data.throughputMBs.toFixed(2) + " MiB/s";
+      document.getElementById("totalTime").textContent = data.totalSeconds.toFixed(1) + "s";
+      document.getElementById("filesUploaded").textContent = data.totalFiles;
+
+      // 2. Latency Stats
+      document.getElementById("avgTime").textContent = data.avgMsPerFile.toFixed(0) + "ms";
+      document.getElementById("p95Time").textContent = data.p95MsPerFile.toFixed(0) + "ms";
+      document.getElementById("stability").textContent = data.stabilityScore.toFixed(1) + "%";
+
+      // 3. Network Saturation (Assume 6000Mbps link for demo visual)
+      const mbps = data.throughputMBs * 8; 
+      const linkLimitMbps = 6000; 
+      const saturation = Math.min(100, (mbps / linkLimitMbps) * 100);
+      document.getElementById("netSat").textContent = saturation.toFixed(1) + "%";
+      document.getElementById("netSat").style.color = saturation > 80 ? "#34d399" : "#f9fafb";
+
+      // 4. RPS & Capacity
+      const avgRPS = data.totalFiles / data.totalSeconds;
+      document.getElementById("rpsVal").textContent = avgRPS.toFixed(1);
+
+      const e3Limit = 5000; 
+      const headroom = 100 - ((avgRPS / e3Limit) * 100);
+      document.getElementById("rpsCap").textContent = headroom.toFixed(2) + "%";
+      document.getElementById("rpsSub").textContent = `Unused RPS Capacity (vs ${e3Limit} limit)`;
+
+    } catch (e) {
+      status.textContent = "Error: " + e.message;
+      status.style.color = "#f87171";
+    }
+  }
+
+  // --- BROWSER LOGIC ---
+  
+  // State tracking for "Parent Directory" logic
+  let currentPrefix = "";
+
+  function getBasePrefix() {
+    const mon = document.getElementById("b_mon").value;
+    const date = document.getElementById("b_date").value;
+    const hour = document.getElementById("b_hour").value;
+    // Ensure trailing slash
+    return `${mon}/${date}/${hour}/`;
+  }
+
+  // Called when "Go" is clicked
+  function loadBase() {
+    currentPrefix = getBasePrefix();
+    browse(currentPrefix);
+  }
+
+  async function browse(prefix) {
+    currentPrefix = prefix;
+    
+    // UI Updates
+    document.getElementById("indexTitle").textContent = `Index of /${prefix}`;
+
+    // Fetch Data (Directory Aware)
+    const res = await fetch(`${API_BASE}/list`, {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ prefix })
+    });
+    const data = await res.json();
+    
+    // Update Count Header
+    const fileCount = data.items.filter(i => i.type === 'file').length;
+    const folderCount = data.items.filter(i => i.type === 'folder').length;
+    document.getElementById("fileCountDisplay").textContent = `${folderCount} Dirs, ${fileCount} Files`;
+    
+    const tbody = document.querySelector("#indexTable tbody");
+    tbody.innerHTML = "";
+    
+    // 1. Add "Parent Directory" Link if we are deeper than base
+    const base = getBasePrefix();
+    // Only show "Up" if current prefix starts with base AND is longer than base
+    if (prefix.length > base.length && prefix.startsWith(base)) {
+        // "monitor/date/hour/dir01/" -> split -> pop -> join -> "monitor/date/hour/"
+        const parts = prefix.replace(/\/$/, "").split('/');
+        parts.pop(); 
+        const parentPath = parts.join('/') + '/';
+        
+        const tr = document.createElement("tr");
+        tr.style.backgroundColor = "rgba(255,255,255,0.05)";
+        tr.innerHTML = `
+            <td colspan="3">
+                <a href="#" onclick="browse('${parentPath}'); return false;" style="font-weight:bold; color:#fbbf24;">
+                 ⬆ Parent Directory
+                </a>
+            </td>`;
+        tbody.appendChild(tr);
+    }
+
+    const publicBase = `https://us-ord-1.linodeobjects.com/storage-demo-bucket`; 
+
+    // 2. Render Items
+    data.items.forEach(item => {
+      const tr = document.createElement("tr");
+      
+      if (item.type === 'folder') {
+        // FOLDER ROW
+        const name = item.key.split('/').filter(p=>p).pop() + "/"; // "dir01/"
+        tr.innerHTML = `
+          <td>
+            <span style="font-size:16px;">📁</span> 
+            <a href="#" onclick="browse('${item.key}'); return false;" style="font-weight:bold; color:#fbbf24;">${name}</a>
+          </td>
+          <td>-</td>
+          <td>-</td>
+        `;
+      } else {
+        // FILE ROW
+        const name = item.key.split('/').pop();
+        const sizeMB = (item.size / 1024 / 1024).toFixed(2);
+        const url = `${publicBase}/${item.key}`;
+        
+        tr.innerHTML = `
+          <td><a href="${url}" target="_blank" style="color:#60a5fa;">${name}</a></td>
+          <td>${new Date(item.lastModified).toLocaleString()}</td>
+          <td>${sizeMB} MiB</td>
+        `;
+      }
+      tbody.appendChild(tr);
+    });
+  }
+
+  async function deletePrefix() {
+    if(!confirm("Are you sure you want to delete all files in this folder?")) return;
+    const prefix = getPrefix(); // Deletes based on inputs, not current view
+    await fetch(`${API_BASE}/delete-all`, {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ prefix })
+    });
+    alert("Deleted.");
+    loadBase(); 
+  }
+</script>
+</body>
+</html>
