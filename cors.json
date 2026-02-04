@@ -1,0 +1,13 @@
+<CORSConfiguration>
+  <CORSRule>
+    <AllowedOrigin>*</AllowedOrigin>
+    <AllowedMethod>GET</AllowedMethod>
+    <AllowedMethod>PUT</AllowedMethod>
+    <AllowedMethod>POST</AllowedMethod>
+    <AllowedMethod>HEAD</AllowedMethod>
+    <AllowedHeader>*</AllowedHeader>
+    <ExposeHeader>ETag</ExposeHeader>
+    <ExposeHeader>x-ratelimit-limit</ExposeHeader>
+    <ExposeHeader>x-ratelimit-remaining</ExposeHeader>
+  </CORSRule>
+</CORSConfiguration>

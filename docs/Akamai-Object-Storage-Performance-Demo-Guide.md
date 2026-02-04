@@ -526,7 +526,7 @@ HTML
         <div class="card-sub">Requests Per Second</div>
       </div>
       <div class="card">
-        <div class="card-title">E3 Scaling Capacity</div>
+        <div class="card-title">E1 Scaling Capacity</div>
         <div class="card-value" id="rpsCap">-</div>
         <div class="card-sub" id="rpsSub">Unused Headroom (vs Limit)</div>
       </div>
@@ -614,10 +614,10 @@ HTML
       const avgRPS = data.totalFiles / data.totalSeconds;
       document.getElementById("rpsVal").textContent = avgRPS.toFixed(1);
 
-      const e3Limit = 5000; 
-      const headroom = 100 - ((avgRPS / e3Limit) * 100);
+      const e1Limit = 5000; 
+      const headroom = 100 - ((avgRPS / e1Limit) * 100);
       document.getElementById("rpsCap").textContent = headroom.toFixed(2) + "%";
-      document.getElementById("rpsSub").textContent = `Unused RPS Capacity (vs ${e3Limit} limit)`;
+      document.getElementById("rpsSub").textContent = `Unused RPS Capacity (vs ${e1Limit} limit)`;
 
     } catch (e) {
       status.textContent = "Error: " + e.message;
